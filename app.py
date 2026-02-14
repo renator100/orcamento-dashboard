@@ -30,11 +30,42 @@ with aba_upload:
 
     if despesas_file:
         try:
-            df_despesas = ler_excel_despesas(despesas_file)
-            ano_d, mes_d = extrair_mes_ano(df_despesas)
-            st.success(f"Despesas detectadas: {mes_d}/{ano_d}")
+            df_despesas = pd.read_excel(despesas_file)
+
+            colunas_esperadas = [
+                "Data",
+                "Descricao",
+                "Categoria",
+                "ValorRenato",
+                "ValorBrunna"
+            ]
+
+            if all(col in df_despesas.columns for col in colunas_esperadas):
+
+                df_despesas["Data"] = pd.to_datetime(df_despesas["Data"])
+                df_despesas["ValorRenato"] = pd.to_numeric(
+                    df_despesas["ValorRenato"])
+                df_despesas["ValorBrunna"] = pd.to_numeric(
+                    df_despesas["ValorBrunna"])
+
+                df_despesas["Total"] = (
+                    df_despesas["ValorRenato"] +
+                    df_despesas["ValorBrunna"]
+                )
+
+                ano_d, mes_d = extrair_mes_ano(df_despesas)
+
+                st.success(f"Despesas detectadas: {mes_d}/{ano_d}")
+
+                st.subheader("Pré-visualização")
+                st.dataframe(df_despesas.head())
+
+            else:
+                st.error("O arquivo não possui as colunas esperadas.")
+                st.write("Colunas encontradas:", df_despesas.columns.tolist())
+
         except Exception as e:
-            st.error(str(e))
+            st.error(f"Erro ao processar o arquivo: {e}")
 
     if orcamento_file:
         try:

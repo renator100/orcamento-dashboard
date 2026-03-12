@@ -1,12 +1,10 @@
 import pandas as pd
 
 
-def ler_excel_despesas(arquivo):
-    df = pd.read_excel(arquivo)
 
-    # 🔹 Normalizar nomes das colunas
-    df.columns = (
-        df.columns
+def normalizar_colunas(colunas):
+    return (
+        colunas.astype(str)
         .str.strip()
         .str.replace("ç", "c")
         .str.replace("ã", "a")
@@ -18,39 +16,27 @@ def ler_excel_despesas(arquivo):
         .str.replace("Descrição", "Descricao")
     )
 
-    colunas_esperadas = [
-        "Data",
-        "Descricao",
-        "Categoria",
-        "Valor Renato",
-        "Valor Brunna",
-    ]
 
+
+def validar_colunas(df: pd.DataFrame, colunas_esperadas: list[str]):
     for col in colunas_esperadas:
         if col not in df.columns:
             raise ValueError(
-                f"Coluna obrigatória ausente: {col}. "
-                f"Colunas encontradas: {df.columns.tolist()}"
+                f"Coluna obrigatória ausente: {col}. Colunas encontradas: {df.columns.tolist()}"
             )
 
+
+
+def ler_excel_despesas(arquivo):
+    df = pd.read_excel(arquivo)
+    df.columns = normalizar_colunas(df.columns)
+    validar_colunas(df, ["Data", "Descricao", "Categoria", "Valor Renato", "Valor Brunna"])
     return df
+
 
 
 def ler_excel_orcamento(arquivo):
     df = pd.read_excel(arquivo)
-
-    # Normalizar nomes das colunas
-    df.columns = df.columns.str.strip()
-
-    print("COLUNAS NORMALIZADAS:", df.columns.tolist())
-
-    colunas_esperadas = ["Categoria", "Orcamento", "Mes", "Ano"]
-
-    for col in colunas_esperadas:
-        if col not in df.columns:
-            raise ValueError(
-                f"Coluna obrigatória ausente: {col}. "
-                f"Colunas encontradas: {df.columns.tolist()}"
-            )
-
+    df.columns = normalizar_colunas(df.columns)
+    validar_colunas(df, ["Categoria", "Orcamento", "Mes", "Ano"])
     return df

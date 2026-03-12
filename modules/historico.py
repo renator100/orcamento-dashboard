@@ -1,8 +1,9 @@
-import pandas as pd
 import os
+import pandas as pd
 
 CAMINHO_DESPESAS = "dados/historico_despesas.parquet"
 CAMINHO_ORCAMENTOS = "dados/historico_orcamentos.parquet"
+
 
 
 def carregar_historico(caminho):
@@ -11,14 +12,17 @@ def carregar_historico(caminho):
     return pd.DataFrame()
 
 
+
 def salvar_historico(df, caminho):
     df.to_parquet(caminho, index=False)
+
 
 
 def remover_mes(df, ano, mes):
     if df.empty:
         return df
 
+    df = df.copy()
     df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
     filtro = ~((df["Data"].dt.year == ano) & (df["Data"].dt.month == mes))
     return df[filtro]

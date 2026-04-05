@@ -1,6 +1,7 @@
 import streamlit as st
 
-from modules.data_processing import preparar_historico, calcular_resumo_divisao
+from modules.data_processing import preparar_historico
+from modules.metrics_engine import calcular_resumo_divisao
 from modules.formatters import formatar_moeda
 from modules.historico import carregar_historico, CAMINHO_DESPESAS
 

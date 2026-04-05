@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from modules.utils import salvar_parquet_seguro
 
 CAMINHO_DESPESAS = "dados/historico_despesas.parquet"
 CAMINHO_ORCAMENTOS = "dados/historico_orcamentos.parquet"
@@ -14,7 +15,7 @@ def carregar_historico(caminho):
 
 
 def salvar_historico(df, caminho):
-    df.to_parquet(caminho, index=False)
+    salvar_parquet_seguro(df, caminho)
 
 
 

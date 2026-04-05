@@ -4,10 +4,10 @@ import streamlit as st
 
 from modules.data_processing import (
     preparar_historico,
-    gerar_resumo_mensal,
     filtrar_mes,
     resumo_categorias,
 )
+from modules.metrics_engine import montar_base_dashboard
 from modules.formatters import formatar_moeda, NOMES_MESES
 from modules.historico import carregar_historico, CAMINHO_DESPESAS
 
@@ -23,7 +23,7 @@ def render_dashboard():
         st.info("Nenhum dado disponível.")
         return
 
-    resumo_mensal = gerar_resumo_mensal(historico)
+    resumo_mensal =  montar_base_dashboard(historico)
 
     ano_selecionado, mes_selecionado = render_filtros_dashboard(resumo_mensal)
     resumo_mes = resumo_mensal[

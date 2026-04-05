@@ -7,11 +7,26 @@ from modules.formatters import formatar_moeda
 from modules.historico import carregar_historico, salvar_historico, remover_mes, CAMINHO_DESPESAS
 from modules.upload import ler_excel_despesas, ler_excel_orcamento
 from modules.utils import extrair_mes_ano
+from modules.metrics_engine import calcular_orcamento_vs_realizado
 
 
 
 def render_upload():
     st.header("Atualização de Dados")
+
+    if "dados_nao_salvos" not in st.session_state:
+        st.session_state["dados_nao_salvos"] = False
+
+    if st.session_state["dados_nao_salvos"]:
+        resumo = st.session_state.get("resumo_upload")
+
+        if resumo:
+            st.info(
+                f"📄 Despesas de {resumo['mes']:02d}/{resumo['ano']} carregadas: "
+                f"{resumo['qtd_registros']} registros prontos para salvar."
+            )
+
+        st.warning("⚠️ Esses dados ainda NÃO foram salvos no histórico.")    
 
     despesas_file = st.file_uploader("Upload Despesas", type=["xlsx"])
     orcamento_file = st.file_uploader("Upload Orçamento", type=["xlsx"])
@@ -25,6 +40,12 @@ def render_upload():
             df_despesas = preparar_despesas(ler_excel_despesas(despesas_file))
             ano_d, mes_d = extrair_mes_ano(df_despesas)
             render_resumo_upload(df_despesas, ano_d, mes_d)
+            st.session_state["dados_nao_salvos"] = True
+            st.session_state["resumo_upload"] = {
+                "mes": mes_d,
+                "ano": ano_d,
+                "qtd_registros": len(df_despesas),
+            }
         except Exception as e:
             st.error(f"Erro ao processar despesas: {e}")
 
@@ -85,26 +106,19 @@ def render_resumo_upload(df_despesas, ano_d, mes_d):
 
 
 def render_comparacao_orcamento(df_despesas, df_orcamento, ano_d, mes_d):
-    df_orcamento_mes = df_orcamento[
-        (df_orcamento["Mes"] == mes_d) & (df_orcamento["Ano"] == ano_d)
-    ]
+    df_comparacao = calcular_orcamento_vs_realizado(
+        df_despesas, df_orcamento, ano_d, mes_d
+    )
 
-    if df_orcamento_mes.empty:
+    if df_comparacao.empty:
         st.warning("Não há orçamento para este mês.")
         return
-
-    df_gastos = df_despesas.groupby("Categoria")["Total"].sum().reset_index()
-    df_comparacao = df_orcamento_mes.merge(df_gastos, on="Categoria", how="left")
-    df_comparacao["Total"] = df_comparacao["Total"].fillna(0)
-    df_comparacao["Diferenca"] = df_comparacao["Orcamento"] - df_comparacao["Total"]
-
+    
     st.subheader("🎯 Comparação com Orçamento")
     df_exibicao = df_comparacao.copy()
     for coluna in ["Orcamento", "Total", "Diferenca"]:
         df_exibicao[coluna] = df_exibicao[coluna].map(formatar_moeda)
     st.dataframe(df_exibicao, use_container_width=True)
-
-
 
 def salvar_despesas_no_historico(df_despesas, ano_d, mes_d):
     historico_despesas = carregar_historico(CAMINHO_DESPESAS)
@@ -122,3 +136,5 @@ def salvar_despesas_no_historico(df_despesas, ano_d, mes_d):
     historico_despesas = pd.concat([historico_despesas, df_despesas], ignore_index=True)
     salvar_historico(historico_despesas, CAMINHO_DESPESAS)
     st.success("Dados salvos com sucesso!")
+    st.session_state["dados_nao_salvos"] = False
+    st.session_state["resumo_upload"] = None

@@ -1,4 +1,36 @@
 import pandas as pd
+from unicodedata import normalize
+
+
+MAPA_CATEGORIAS = {
+    "SAUDE": "Saude",
+    "REMEDIO": "Saude",
+    "FARMACIA": "Saude",
+    "IPVA": "Impostos",
+    "IPTU": "Impostos",
+    "IMPOSTO": "Impostos",
+    "SUPERMERCADO": "Mercado",
+    "MERCADO": "Mercado",
+    "ALIMENTACAO": "Restaurantes",
+    "IFOOD": "Restaurantes",
+    "RESTAURANTE": "Restaurantes",
+    "ABASTECIMENTO": "Transporte",
+    "PET": "Pets",
+    "HOTEL": "Viagem",
+    "VIAGENS": "Viagem",
+}
+
+
+def limpar_texto(texto):
+    if not isinstance(texto, str):
+        return texto
+    texto = texto.strip().upper()
+    return normalize("NFKD", texto).encode("ASCII", "ignore").decode("ASCII")
+
+
+def padronizar_categoria(categoria):
+    categoria_limpa = limpar_texto(categoria)
+    return MAPA_CATEGORIAS.get(categoria_limpa, categoria_limpa.title())
 
 
 def preparar_despesas(df: pd.DataFrame) -> pd.DataFrame:
@@ -6,14 +38,14 @@ def preparar_despesas(df: pd.DataFrame) -> pd.DataFrame:
     df["Data"] = pd.to_datetime(df["Data"], errors="coerce")
     df["Valor Renato"] = pd.to_numeric(df["Valor Renato"], errors="coerce").fillna(0)
     df["Valor Brunna"] = pd.to_numeric(df["Valor Brunna"], errors="coerce").fillna(0)
-    df["Categoria"] = df["Categoria"].astype(str).str.strip().str.title()
+    df["Categoria"] = df["Categoria"].apply(padronizar_categoria)
     df["Total"] = df["Valor Renato"] + df["Valor Brunna"]
     return df
 
 
 def preparar_orcamento(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    df["Categoria"] = df["Categoria"].astype(str).str.strip().str.title()
+    df["Categoria"] = df["Categoria"].apply(padronizar_categoria)
     df["Orcamento"] = pd.to_numeric(df["Orcamento"], errors="coerce").fillna(0)
     df["Mes"] = pd.to_numeric(df["Mes"], errors="coerce").fillna(0).astype(int)
     df["Ano"] = pd.to_numeric(df["Ano"], errors="coerce").fillna(0).astype(int)
@@ -34,25 +66,6 @@ def preparar_historico(df: pd.DataFrame) -> pd.DataFrame:
     return df.sort_values("Mes_Ref")
 
 
-def gerar_resumo_mensal(historico: pd.DataFrame) -> pd.DataFrame:
-    resumo = (
-        historico
-        .groupby("Mes_Ref")["Total"]
-        .sum()
-        .reset_index()
-        .sort_values("Mes_Ref")
-    )
-
-    resumo["Media_Movel_3M"] = resumo["Total"].rolling(window=3, min_periods=1).mean()
-    resumo["Variacao_Mensal"] = resumo["Total"].diff()
-    resumo["Variacao_Mensal_%"] = resumo["Total"].pct_change() * 100
-    resumo["Variacao_Anual_%"] = resumo["Total"].pct_change(periods=12) * 100
-    resumo["Ano"] = resumo["Mes_Ref"].dt.year
-    resumo["Mes_Num"] = resumo["Mes_Ref"].dt.month
-    resumo["Mes_Str"] = resumo["Mes_Ref"].dt.to_period("M").astype(str)
-    return resumo
-
-
 def filtrar_mes(historico: pd.DataFrame, ano: int, mes: int) -> pd.DataFrame:
     return historico[(historico["Ano"] == ano) & (historico["Mes_Num"] == mes)].copy()
 
@@ -67,31 +80,3 @@ def resumo_categorias(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
         .sort_values("Total", ascending=False)
     )
-
-
-def calcular_resumo_divisao(df_mes: pd.DataFrame) -> dict:
-    total_renato = df_mes["Valor Renato"].sum()
-    total_brunna = df_mes["Valor Brunna"].sum()
-    diferenca = total_renato - total_brunna
-
-    if diferenca > 0:
-        mensagem = "Brunna deve"
-        valor_ajuste = abs(diferenca) / 2
-        destino = "Renato"
-    elif diferenca < 0:
-        mensagem = "Renato deve"
-        valor_ajuste = abs(diferenca) / 2
-        destino = "Brunna"
-    else:
-        mensagem = "Está tudo equilibrado ✨"
-        valor_ajuste = 0
-        destino = ""
-
-    return {
-        "total_renato": total_renato,
-        "total_brunna": total_brunna,
-        "diferenca": diferenca,
-        "mensagem_base": mensagem,
-        "valor_ajuste": valor_ajuste,
-        "destino": destino,
-    }
